@@ -5,6 +5,8 @@ import math
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+# start debugger
+import pdb
 
 import data
 import model
@@ -118,7 +120,7 @@ if args.cuda:
     model.cuda()
 
 criterion = nn.CrossEntropyLoss()
-# optimizer = torch.optim.Adam(model.parameters(), args.lr)
+#optimizer = torch.optim.Adam(model.parameters(), args.lr)
 ###############################################################################
 # Training code
 ###############################################################################
@@ -154,12 +156,12 @@ def evaluate(data_source):
     model.eval()
     total_loss = 0
     ntokens = len(corpus.dictionary)
-    # hidden = model.init_hidden(eval_batch_size)
+    #hidden = model.init_hidden(eval_batch_size)
     hidden ,cell_state = model.init_hidden(eval_batch_size)
     for i in range(0, data_source.size(0) - 1, args.bptt):
         data, targets = get_batch(data_source, i, evaluation=True)
-      #  output, hidden = model(data, hidden)
-        output, hidden, cell_state = model(data, hidden, cell_state)
+        output, hidden = model(data, hidden)
+        #output, hidden, cell_state = model(data, hidden, cell_state)
         output_flat = output.view(-1, ntokens)
         total_loss += len(data) * criterion(output_flat, targets).data
         hidden = repackage_hidden(hidden)
@@ -189,8 +191,8 @@ def train():
         
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
-        hidden = repackage_hidden(hidden)
-        cell_state = repackage_hidden(cell_state)
+        #hidden = repackage_hidden(hidden)
+        #cell_state = repackage_hidden(cell_state)
         
         #print("1----------------------------- : ", i)
         #print("hidden size :", hidden.size())
@@ -199,9 +201,17 @@ def train():
         model.zero_grad()
         #output, hidden = model(data, hidden)
         output, hidden  , cell_state = model(data, hidden, cell_state)
-      
+        
+        
+        print("output :", type(output))
+        print("hidden :", type(hidden))
+        print("cell_state :", type(cell_state))
+        print("targets size :", type(targets))
+        
         loss = criterion(output.view(-1, ntokens), targets)
-        loss.backward()
+        loss.backward(retain_graph=True)
+        
+        #pdb.set_trace()
         print("model.parameters()", list(model.state_dict()))
         
         #print("encoder.weight.grad.data :", model.state_dict()['encoder.weight'].grad.data)
@@ -210,6 +220,7 @@ def train():
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
         #optimizer.step()
+        
         
         for p in model.parameters():
             #print("p.data :",p.data.size())

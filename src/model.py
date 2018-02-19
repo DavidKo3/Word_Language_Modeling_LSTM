@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
+
 class NestedLSTM(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
 
@@ -11,6 +12,14 @@ class NestedLSTM(nn.Module):
         self.encoder = nn.Embedding(ntoken, ninp)
        
         # lstm weights
+        self.weight_fxh = nn.Linear(nhid+ninp, nhid)
+        self.weight_ixh = nn.Linear(nhid+ninp, nhid)
+        self.weight_cxh = nn.Linear(nhid+ninp, nhid)
+        self.weight_oxh = nn.Linear(nhid+ninp, nhid)
+        
+        
+        
+        """
         self.weight_fh = nn.Linear(nhid, nhid)
         self.weight_ih = nn.Linear(nhid, nhid)
         self.weight_ch = nn.Linear(nhid, nhid)
@@ -20,7 +29,7 @@ class NestedLSTM(nn.Module):
         self.weight_ix = nn.Linear(ninp, nhid)
         self.weight_cx = nn.Linear(ninp, nhid)
         self.weight_ox = nn.Linear(ninp, nhid)
-        
+        """
         self.decoder = nn.Linear(nhid, ntoken)
 
         self.init_weights()
@@ -45,26 +54,52 @@ class NestedLSTM(nn.Module):
         #emb = self.drop(self.encoder(input))
         if(emb.size(0) != h_0.size(0)):
             h_0 ,c_0 = h_0[:emb.size(0)], c_0[:emb.size(0)]
+        
+        print("input type : ", input.size())
+        print("emb type : ", emb.size())
+        print("h_0 type : ", h_0.size())
+        
+        buff_h0= Variable(torch.zeros(emb.size(0), emb.size(1), emb.size(2)))
+       # buff_h0= h_0.clone()
+        if(emb.size(0) != h_0.size(0)): 
+            for i in range(emb.size(0)):
+                buff_h0[i] = h_0[:]
+        #var_ho = Variable(buff_h0)
+        input_combined = torch.cat((emb, buff_h0), 2)   
+        #print("input combined ", input_combined.size())
+        f_g = F.sigmoid(self.weight_fxh(input_combined)) # [35, 20, 200]
+        i_g = F.sigmoid(self.weight_ixh(input_combined))  # [35, 20, 200]
+        o_g = F.sigmoid(self.weight_oxh(input_combined)) # [35, 20, 200]
 
-        f_g = F.sigmoid(self.weight_fx(emb) + self.weight_fh(h_0))
-        i_g = F.sigmoid(self.weight_ix(emb) + self.weight_ih(h_0))
-        o_g = F.sigmoid(self.weight_ox(emb) + self.weight_oh(h_0))
-
+    
+        #print("weight_fxh.grad.data", self.weight_fxh.grad.data)
+        #f_g = F.sigmoid(self.weight_fx(emb) + self.weight_fh(h_0)) # [35, 20, 200]
+        #i_g = F.sigmoid(self.weight_ix(emb) + self.weight_ih(h_0)) # [35, 20, 200]
+        #o_g = F.sigmoid(self.weight_ox(emb) + self.weight_oh(h_0)) # [35, 20, 200]
+        #print("emb size :", emb.size()) # [35, 20, 200]
+        #print("weight_fx size :", self.weight_fx) # [200 -> 200]
+        #print("weight_fh size :", self.weight_fh) # [200 -> 200]]
         # intermediate cel state
-        c_int = F.tanh(self.weight_cx(emb) + self.weight_ch(h_0))
-
-        c_x = f_g*c_0 + i_g*c_int
-        h_x = i_g*F.sigmoid(c_int)
-
+        c_int = F.sigmoid(self.weight_cxh(input_combined)) # [35, 20, 200]
+        #c_int = F.tanh(self.weight_cx(emb) + self.weight_ch(h_0)) # [35, 20, 200]
+          
+       
+        c_x = f_g*c_0 + i_g*c_int# [35, 20, 200]
+        #h_x = o_g*c_0 # [35, 20, 200]
+        h_x = o_g*(F.sigmoid(c_x)) # [35, 20, 200]
+        
+        #c_x = f_g*c_0 + i_g*c_int # [35, 20, 200]
+        #h_x = o_g*(F.sigmoid(c_int)) # [35, 20, 200]
+   
         decoded = self.decoder(h_x.view(h_x.size(0)*h_x.size(1), h_x.size(2)))
-
+        #print("decoded size ", decoded.size())
         return decoded.view(h_x.size(0), h_x.size(1), decoded.size(1)), h_x, c_x
 
     def init_hidden(self, bsz):
         weight = next(self.parameters()).data
     
-        
-        weight = next(self.parameters()).data
+        #h_0 = Variable(weight.new(1, bsz, self.nhid+self.nhip).zero_())
+        #c_0 = Variable(weight.new(1, bsz, self.nhid+self.nhip).zero_())
         h_0 = Variable(weight.new(1, bsz, self.nhid).zero_())
         c_0 = Variable(weight.new(1, bsz, self.nhid).zero_())
         

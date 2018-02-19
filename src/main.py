@@ -160,8 +160,8 @@ def evaluate(data_source):
     hidden ,cell_state = model.init_hidden(eval_batch_size)
     for i in range(0, data_source.size(0) - 1, args.bptt):
         data, targets = get_batch(data_source, i, evaluation=True)
-        output, hidden = model(data, hidden)
-        #output, hidden, cell_state = model(data, hidden, cell_state)
+        #output, hidden = model(data, hidden)
+        output, hidden, cell_state = model(data, hidden, cell_state)
         output_flat = output.view(-1, ntokens)
         total_loss += len(data) * criterion(output_flat, targets).data
         hidden = repackage_hidden(hidden)
@@ -191,8 +191,8 @@ def train():
         
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
-        #hidden = repackage_hidden(hidden)
-        #cell_state = repackage_hidden(cell_state)
+        hidden = repackage_hidden(hidden)
+        cell_state = repackage_hidden(cell_state)
         
         #print("1----------------------------- : ", i)
         #print("hidden size :", hidden.size())
@@ -202,17 +202,12 @@ def train():
         #output, hidden = model(data, hidden)
         output, hidden  , cell_state = model(data, hidden, cell_state)
         
-        
-        print("output :", type(output))
-        print("hidden :", type(hidden))
-        print("cell_state :", type(cell_state))
-        print("targets size :", type(targets))
-        
+      
         loss = criterion(output.view(-1, ntokens), targets)
-        loss.backward(retain_graph=True)
+        loss.backward()
         
         #pdb.set_trace()
-        print("model.parameters()", list(model.state_dict()))
+        #print("model.parameters()", list(model.state_dict()))
         
         #print("encoder.weight.grad.data :", model.state_dict()['encoder.weight'].grad.data)
         # print("weight_fh.weight.grad.data :", model.state_dict()['weight_fh.weight'].grad.data)
@@ -224,9 +219,9 @@ def train():
         
         for p in model.parameters():
             #print("p.data :",p.data.size())
-            print(hasattr(p.grad, "data"))
+            #print(hasattr(p.grad, "data"))
             #print("p.grad.data :", p.grad.data.size())
-            #p.data.add_(-lr, p.grad.data)
+            p.data.add_(-lr, p.grad.data)
         
         total_loss += loss.data
 

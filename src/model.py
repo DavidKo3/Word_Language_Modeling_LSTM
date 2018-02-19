@@ -54,11 +54,11 @@ class NestedLSTM(nn.Module):
         #emb = self.drop(self.encoder(input))
         if(emb.size(0) != h_0.size(0)):
             h_0 ,c_0 = h_0[:emb.size(0)], c_0[:emb.size(0)]
-        
+        """
         print("input type : ", input.size())
         print("emb type : ", emb.size())
         print("h_0 type : ", h_0.size())
-        
+        """
         buff_h0= Variable(torch.zeros(emb.size(0), emb.size(1), emb.size(2)))
        # buff_h0= h_0.clone()
         if(emb.size(0) != h_0.size(0)): 

@@ -111,7 +111,7 @@ ntokens = len(corpus.dictionary) # 33278
 
 
 #model = model.NestedLSTM(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied)
-model = model.NestedLSTM(ntokens, args.emsize, args.nhid, nlayers=1)
+model = model.NestedLSTM(ntokens, args.emsize, args.nhid, args.dropout, nlayers=1)
 #model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied)
 # args.model  : type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU) ('LSTM')
 # args.emsize : size of word embeddings(200), args.nhid : number of hidden units per layer (200), args.nlayers : number of layers (2) 

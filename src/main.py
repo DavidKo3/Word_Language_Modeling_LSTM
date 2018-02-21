@@ -206,21 +206,13 @@ def train():
         loss = criterion(output.view(-1, ntokens), targets)
         loss.backward()
         
-        #pdb.set_trace()
-        #print("model.parameters()", list(model.state_dict()))
-        
-        #print("encoder.weight.grad.data :", model.state_dict()['encoder.weight'].grad.data)
-        # print("weight_fh.weight.grad.data :", model.state_dict()['weight_fh.weight'].grad.data)
 
-        # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
-        #optimizer.step()
+
         
         
         for p in model.parameters():
-            #print("p.data :",p.data.size())
-            #print(hasattr(p.grad, "data"))
-            #print("p.grad.data :", p.grad.data.size())
+
             p.data.add_(-lr, p.grad.data)
         
         total_loss += loss.data

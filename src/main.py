@@ -202,7 +202,6 @@ def train():
         torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
 
         for p in model.parameters():
-
             p.data.add_(-lr, p.grad.data)
         
         total_loss += loss.data

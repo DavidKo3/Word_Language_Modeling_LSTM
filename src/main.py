@@ -110,8 +110,8 @@ test_data = batchify(corpus.test, eval_batch_size)
 ntokens = len(corpus.dictionary) # 33278
 
 #model = model.NestedLSTM(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied)
-#model = model.NestedLSTM(ntokens, args.emsize, args.nhid, args.dropout, nlayers=1)
-model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied)
+model = model.NestedLSTM(ntokens, args.emsize, args.nhid, args.dropout, nlayers=1)
+#model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied)
 # args.model  : type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU) ('LSTM')
 # args.emsize : size of word embeddings(200), args.nhid : number of hidden units per layer (200), args.nlayers : number of layers (2) 
 # args.tied   : tie the word embedding and softmax weights
@@ -149,20 +149,19 @@ def get_batch(source, i, evaluation=False):
     target = Variable(source[i+1:i+1+seq_len].view(-1))
     return data, target
 
-
 def evaluate(data_source):
     # Turn on evaluation mode which disables dropout.
     model.eval()
     total_loss = 0
     ntokens = len(corpus.dictionary)
     #hidden = model.init_hidden(eval_batch_size)
-    hidden ,cell_state = model.init_hidden(eval_batch_size)
-    #hidden ,cell_state,tild_cell_state = model.init_hidden(eval_batch_size)
+    #hidden ,cell_state = model.init_hidden(eval_batch_size)
+    hidden ,cell_state,tild_cell_state = model.init_hidden(eval_batch_size)
     for i in range(0, data_source.size(0) - 1, args.bptt):
         data, targets = get_batch(data_source, i, evaluation=True)
-        output, hidden = model(data, hidden)
+        #output, hidden = model(data, hidden)
         #output, hidden, cell_state = model(data, hidden, cell_state)
-        #output, hidden, cell_state, tild_cell_state= model(data, hidden, cell_state, tild_cell_state)
+        output, hidden, cell_state, tild_cell_state= model(data, hidden, cell_state, tild_cell_state)
         output_flat = output.view(-1, ntokens)
         total_loss += len(data) * criterion(output_flat, targets).data
         hidden = repackage_hidden(hidden)
@@ -175,8 +174,8 @@ def train():
     total_loss = 0
     start_time = time.time()
     ntokens = len(corpus.dictionary)
-    hidden , cell_state = model.init_hidden(args.batch_size)
-    #hidden , cell_state, tild_cell_state= model.init_hidden(args.batch_size)
+    #hidden , cell_state = model.init_hidden(args.batch_size)
+    hidden , cell_state, tild_cell_state = model.init_hidden(args.batch_size)
     # hidden, cell_state = model.init_hidden(args.batch_size) # [35, 200]
 
     for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
@@ -186,15 +185,15 @@ def train():
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
         hidden = repackage_hidden(hidden)
         cell_state = repackage_hidden(cell_state)
-        #tild_cell_state = repackage_hidden(tild_cell_state)
+        tild_cell_state = repackage_hidden(tild_cell_state)
 
         model.zero_grad()
-        output, hidden = model(data, hidden)
+        #output, hidden = model(data, hidden)
         # output, hidden  , cell_state = model(data, hidden, cell_state)
-        #output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state)
+        output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state)
        
         # 2 layer NestedLSTM
-        #output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state) # data to output 
+        output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state) # data to output 
          
         loss = criterion(output.view(-1, ntokens), targets)
         loss.backward()

@@ -37,8 +37,6 @@ class NestedLSTM(nn.Module):
         self.weight_tild_cx = nn.Linear(ninp, nhid)
         self.weight_tild_ox = nn.Linear(ninp, nhid)
         
-        
-        
         self.decoder = nn.Linear(nhid, ntoken)
 
         self.init_weights()
@@ -177,7 +175,6 @@ class RNNModel(nn.Module):
         output, hidden = self.rnn(emb, hidden)
         output = self.drop(output) # [35, 20, 200]
         decoded = self.decoder(output.view(output.size(0)*output.size(1), output.size(2))) # [700, 200]
-        #print("5. decoded size :", decoded.size()) # [700, 33278]
         return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden # [35, 20, 33278] , 2x20x200
 
     def init_hidden(self, bsz):

@@ -55,13 +55,13 @@ class NestedLSTM(nn.Module):
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
     # def forward(self, input, hidden):
-    def forward(self, input, h_0, c_0):
+    def forward(self, input, h_0, c_0, tild_c_0):
         # eoncode the input characters
         emb = self.drop(self.encoder(input))
         #emb = self.encoder(input)
         if(emb.size(0) != h_0.size(0)):
-            h_0 ,c_0 = h_0[:emb.size(0)], c_0[:emb.size(0)]
-
+           # h_0 ,c_0 = h_0[:emb.size(0)], c_0[:emb.size(0)]
+            h_0 ,c_0 ,tild_c_0 = h_0[:emb.size(0)], c_0[:emb.size(0)], tild_c_0[:emb.size(0)]
         """
         buff_h0= Variable(torch.zeros(emb.size(0), emb.size(1), emb.size(2)))
 
@@ -82,30 +82,46 @@ class NestedLSTM(nn.Module):
         o_g = F.sigmoid(self.weight_ox(emb) + self.weight_oh(h_0)) # [35, 20, 200]
         # intermediate cel state
         
-        c_int = F.tanh(self.weight_cx(emb) + self.weight_ch(h_0)) # [35, 20, 200]
+        #c_int = F.tanh(self.weight_cx(emb) + self.weight_ch(h_0)) # [35, 20, 200]
+        c_int = self.weight_cx(emb) + self.weight_ch(h_0) # [35, 20, 200]
           
+        
         tild_h =  f_g*c_0 
         tild_x = i_g*c_int
-        c_x = tild_h + tild_x# [35, 20, 200]
-       # c_x = f_g*c_0 + i_g*c_int# [35, 20, 200]
-        h_x = o_g*(F.tanh(c_x)) # [35, 20, 200]
+        #c_x = tild_h + tild_x# [35, 20, 200]
+        # c_x = f_g*c_0 + i_g*c_int# [35, 20, 200]
+        #h_x = o_g*(F.tanh(c_x)) # [35, 20, 200]
+        
         
         #c_x = f_g*c_0 + i_g*c_int # [35, 20, 200]
         #h_x = o_g*(F.sigmoid(c_int)) # [35, 20, 200]
+        
+        tild_f_g = F.sigmoid(self.weight_tild_fx(tild_x) + self.weight_tild_fh(tild_h)) # [35, 20, 200]
+        tild_i_g = F.sigmoid(self.weight_tild_ix(tild_x) + self.weight_tild_ih(tild_h)) # [35, 20, 200]
+        tild_o_g = F.sigmoid(self.weight_tild_ox(tild_x) + self.weight_tild_oh(tild_h)) # [35, 20, 200]
+        # intermediate cel state
+        
+        tild_c_int = F.tanh(self.weight_tild_cx(tild_x) + self.weight_tild_ch(tild_h)) # [35, 20, 200]
+        tild_c_x = tild_f_g*tild_c_0 + tild_i_g*tild_c_int
+        
+        tild_h_x = tild_o_g*(F.tanh(tild_c_x)) # [35, 20, 200]
+        c_x = tild_h_x
+        h_x = o_g*(F.tanh(c_x)) # [35, 20, 200]
         h_x = self.drop(h_x) # [35, 20, 200]
         decoded = self.decoder(h_x.view(h_x.size(0)*h_x.size(1), h_x.size(2)))
         #print("decoded size ", decoded.size())
-        return decoded.view(h_x.size(0), h_x.size(1), decoded.size(1)), h_x, c_x
+        return decoded.view(h_x.size(0), h_x.size(1), decoded.size(1)), h_x, c_x ,tild_c_x
 
     def init_hidden(self, bsz):
         weight = next(self.parameters()).data
     
         h_0 = Variable(weight.new(1, bsz, self.nhid).zero_())
         c_0 = Variable(weight.new(1, bsz, self.nhid).zero_())
+        tild_c_0 = Variable(weight.new(1, bsz, self.nhid).zero_())
         #h_0 = Variable(weight.new(self.nlayers, bsz, self.nhid).zero_())
         #c_0 = Variable(weight.new(self.nlayers, bsz, self.nhid).zero_())
-        
-        return (h_0, c_0)
+        return (h_0, c_0, tild_c_0)
+        #return (h_0, c_0)
     """
         if self.rnn_type == 'LSTM':
             return (Variable(weight.new(self.nlayers, bsz, self.nhid).zero_()),

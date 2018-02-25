@@ -231,7 +231,7 @@ def train():
             prev_velocity[k]= velocity[k]
             k+=1
             #p.data.add_(-lr, p.grad.data)
-        
+            
         total_loss += loss.data
 
         if batch % args.log_interval == 0 and batch > 0:

@@ -12,6 +12,9 @@ from torch.autograd import Variable
 
 import data
 
+#parser = argparse.ArgumentParser(description='PyTorch wonderand RNN/LSTM Language Model')
+#parser.add_argument('--data', type=str, default='./data/wonderland',help='location of the data corpus')
+
 parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 Language Model')
 
 # Model parameters.

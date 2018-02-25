@@ -7,11 +7,15 @@ import torch.nn as nn
 from torch.autograd import Variable
 # start debugger
 import pdb
-
+import numpy as np
 import data
 import model
 
+
 parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 RNN/LSTM Language Model')
+#parser.add_argument('--data', type=str, default='./data/wonderland',
+#                    help='location of the data corpus')
+
 parser.add_argument('--data', type=str, default='./data/wikitext-2',
                     help='location of the data corpus')
 parser.add_argument('--model', type=str, default='LSTM',
@@ -26,12 +30,15 @@ parser.add_argument('--lr', type=float, default=20,
                     help='initial learning rate')
 parser.add_argument('--clip', type=float, default=0.25,
                     help='gradient clipping')
-parser.add_argument('--epochs', type=int, default=40,
+parser.add_argument('--epochs', type=int, default=20,
                     help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                     help='batch size')
+
+
 parser.add_argument('--bptt', type=int, default=35,
-                    help='sequence length')
+                   help='sequence length')
+
 parser.add_argument('--dropout', type=float, default=0.2,
                     help='dropout applied to layers (0 = no dropout)')
 parser.add_argument('--tied', action='store_true',
@@ -40,8 +47,11 @@ parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
 parser.add_argument('--cuda', action='store_true',
                     help='use CUDA')
+
 parser.add_argument('--log-interval', type=int, default=200, metavar='N',
                     help='report interval')
+#parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+#                    help='report interval')
 parser.add_argument('--save', type=str,  default='model.pt',
                     help='path to save the final model')
 args = parser.parse_args()
@@ -155,7 +165,7 @@ def evaluate(data_source):
     total_loss = 0
     ntokens = len(corpus.dictionary)
     #hidden = model.init_hidden(eval_batch_size)
-    #hidden ,cell_state = model.init_hidden(eval_batch_size)
+    ##hidden ,cell_state = model.init_hidden(eval_batch_size)
     hidden ,cell_state,tild_cell_state = model.init_hidden(eval_batch_size)
     for i in range(0, data_source.size(0) - 1, args.bptt):
         data, targets = get_batch(data_source, i, evaluation=True)
@@ -165,6 +175,9 @@ def evaluate(data_source):
         output_flat = output.view(-1, ntokens)
         total_loss += len(data) * criterion(output_flat, targets).data
         hidden = repackage_hidden(hidden)
+        
+        cell_state = repackage_hidden(cell_state)
+        tild_cell_state = repackage_hidden(tild_cell_state)
     return total_loss[0] / len(data_source)
 
 
@@ -174,10 +187,12 @@ def train():
     total_loss = 0
     start_time = time.time()
     ntokens = len(corpus.dictionary)
-    #hidden , cell_state = model.init_hidden(args.batch_size)
+    #hidden, cell_state = model.init_hidden(args.batch_size) # [35, 200]
     hidden , cell_state, tild_cell_state = model.init_hidden(args.batch_size)
-    # hidden, cell_state = model.init_hidden(args.batch_size) # [35, 200]
+   
 
+    prev_velocity ={}
+   
     for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
         data, targets = get_batch(train_data, i)
         
@@ -199,9 +214,23 @@ def train():
         loss.backward()
         
         torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
-
-        for p in model.parameters():
-            p.data.add_(-lr, p.grad.data)
+        
+        init_prev_velocity={}
+        if i==0:
+            init_prev_velocity = {k : p.data.new(p.grad.data.size()).zero_() for k , p in enumerate(model.parameters())}
+        k=0
+        velocity = {}
+        
+        for p in model.parameters(): 
+            gamma = .9
+            if i==0:
+                velocity[k] = gamma*init_prev_velocity[k] - lr * p.grad.data
+            else:
+                velocity[k] = gamma*prev_velocity[k] - lr * p.grad.data 
+            p.data.add_(velocity[k])
+            prev_velocity[k]= velocity[k]
+            k+=1
+            #p.data.add_(-lr, p.grad.data)
         
         total_loss += loss.data
 

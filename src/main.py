@@ -10,7 +10,7 @@ import pdb
 import numpy as np
 import data
 import model
-
+import torch.optim as optim
 
 parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 RNN/LSTM Language Model')
 #parser.add_argument('--data', type=str, default='./data/wonderland',
@@ -121,6 +121,7 @@ ntokens = len(corpus.dictionary) # 33278
 
 #model = model.NestedLSTM(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied)
 model = model.NestedLSTM(ntokens, args.emsize, args.nhid, args.dropout, nlayers=1)
+
 #model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied)
 # args.model  : type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU) ('LSTM')
 # args.emsize : size of word embeddings(200), args.nhid : number of hidden units per layer (200), args.nlayers : number of layers (2) 
@@ -128,7 +129,10 @@ model = model.NestedLSTM(ntokens, args.emsize, args.nhid, args.dropout, nlayers=
 if args.cuda:
     model.cuda()
 
+lr = args.lr
+
 criterion = nn.CrossEntropyLoss()
+optimizer = optim.SGD(model.parameters(), lr =lr, momentum=0.9, nesterov=True)
 #optimizer = torch.optim.Adam(model.parameters(), args.lr)
 ###############################################################################
 # Training code
@@ -165,7 +169,7 @@ def evaluate(data_source):
     total_loss = 0
     ntokens = len(corpus.dictionary)
     #hidden = model.init_hidden(eval_batch_size)
-    ##hidden ,cell_state = model.init_hidden(eval_batch_size)
+    #hidden ,cell_state = model.init_hidden(eval_batch_size)
     hidden ,cell_state,tild_cell_state = model.init_hidden(eval_batch_size)
     for i in range(0, data_source.size(0) - 1, args.bptt):
         data, targets = get_batch(data_source, i, evaluation=True)
@@ -184,6 +188,7 @@ def evaluate(data_source):
 def train():
     # Turn on training mode which enables dropout.
     model.train()
+   
     total_loss = 0
     start_time = time.time()
     ntokens = len(corpus.dictionary)
@@ -201,27 +206,33 @@ def train():
         hidden = repackage_hidden(hidden)
         cell_state = repackage_hidden(cell_state)
         tild_cell_state = repackage_hidden(tild_cell_state)
-
+        
         model.zero_grad()
+
         #output, hidden = model(data, hidden)
         # output, hidden  , cell_state = model(data, hidden, cell_state)
-        output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state)
-       
+        #output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state)
+        _, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state)
+        
         # 2 layer NestedLSTM
         output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state) # data to output 
-         
+      
         loss = criterion(output.view(-1, ntokens), targets)
         loss.backward()
         
         torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
-        
+        optimizer.step()
+        """
         init_prev_velocity={}
         if i==0:
             init_prev_velocity = {k : p.data.new(p.grad.data.size()).zero_() for k , p in enumerate(model.parameters())}
         k=0
         velocity = {}
+        """
         
+        """
         for p in model.parameters(): 
+            
             gamma = .9
             if i==0:
                 velocity[k] = gamma*init_prev_velocity[k] - lr * p.grad.data
@@ -230,14 +241,16 @@ def train():
             p.data.add_(velocity[k])
             prev_velocity[k]= velocity[k]
             k+=1
-            #p.data.add_(-lr, p.grad.data)
+        
             
+            p.data.add_(-lr, p.grad.data)
+        """   
         total_loss += loss.data
 
         if batch % args.log_interval == 0 and batch > 0:
             cur_loss = total_loss[0] / args.log_interval
             elapsed = time.time() - start_time
-            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
+            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.5f} | ms/batch {:5.2f} | '
                     'loss {:5.2f} | ppl {:8.2f}'.format(
                 epoch, batch, len(train_data) // args.bptt, lr,
                 elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
@@ -245,7 +258,7 @@ def train():
             start_time = time.time()
 
 # Loop over epochs.
-lr = args.lr
+#lr = args.lr
 best_val_loss = None
 
 # At any point you can hit Ctrl + C to break out of training early.
@@ -266,7 +279,7 @@ try:
             best_val_loss = val_loss
         else:
             # Anneal the learning rate if no improvement has been seen in the validation dataset.
-            lr /= 4.0
+            lr /= 2.0
 except KeyboardInterrupt:
     print('-' * 89)
     print('Exiting from training early')

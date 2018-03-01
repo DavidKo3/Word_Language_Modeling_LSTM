@@ -194,7 +194,6 @@ def train():
     ntokens = len(corpus.dictionary)
     #hidden, cell_state = model.init_hidden(args.batch_size) # [35, 200]
     hidden , cell_state, tild_cell_state = model.init_hidden(args.batch_size)
-   
     #prev_velocity ={}
    
     for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):

@@ -132,7 +132,7 @@ if args.cuda:
 lr = args.lr
 
 criterion = nn.CrossEntropyLoss()
-#optimizer = optim.SGD(model.parameters(), lr =lr, momentum=0.9, nesterov=True)
+optimizer = optim.SGD(model.parameters(), lr =lr, momentum=0.9, nesterov=True)
 #optimizer = torch.optim.Adam(model.parameters(), args.lr)
 ###############################################################################
 # Training code
@@ -276,6 +276,8 @@ try:
         else:
             # Anneal the learning rate if no improvement has been seen in the validation dataset.
             lr /= 2.0
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr
 except KeyboardInterrupt:
     print('-' * 89)
     print('Exiting from training early')

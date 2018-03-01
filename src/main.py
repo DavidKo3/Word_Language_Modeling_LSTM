@@ -132,7 +132,7 @@ if args.cuda:
 lr = args.lr
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(model.parameters(), lr =lr, momentum=0.9, nesterov=True)
+#optimizer = optim.SGD(model.parameters(), lr =lr, momentum=0.9, nesterov=True)
 #optimizer = torch.optim.Adam(model.parameters(), args.lr)
 ###############################################################################
 # Training code
@@ -175,6 +175,8 @@ def evaluate(data_source):
         data, targets = get_batch(data_source, i, evaluation=True)
         #output, hidden = model(data, hidden)
         #output, hidden, cell_state = model(data, hidden, cell_state)
+        _, hidden, cell_state, tild_cell_state= model(data, hidden, cell_state, tild_cell_state)
+        
         output, hidden, cell_state, tild_cell_state= model(data, hidden, cell_state, tild_cell_state)
         output_flat = output.view(-1, ntokens)
         total_loss += len(data) * criterion(output_flat, targets).data
@@ -194,7 +196,7 @@ def train():
     ntokens = len(corpus.dictionary)
     #hidden, cell_state = model.init_hidden(args.batch_size) # [35, 200]
     hidden , cell_state, tild_cell_state = model.init_hidden(args.batch_size)
-    #prev_velocity ={}
+    prev_velocity ={}
    
     for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
         data, targets = get_batch(train_data, i)
@@ -219,16 +221,14 @@ def train():
         loss.backward()
         
         torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
-        optimizer.step()
-        """
+        #optimizer.step()
+        
         init_prev_velocity={}
         if i==0:
             init_prev_velocity = {k : p.data.new(p.grad.data.size()).zero_() for k , p in enumerate(model.parameters())}
         k=0
         velocity = {}
-        """
-        
-        """
+      
         for p in model.parameters(): 
             
             gamma = .9
@@ -239,10 +239,9 @@ def train():
             p.data.add_(velocity[k])
             prev_velocity[k]= velocity[k]
             k+=1
-        
             
             p.data.add_(-lr, p.grad.data)
-        """   
+        
         total_loss += loss.data
 
         if batch % args.log_interval == 0 and batch > 0:

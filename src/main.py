@@ -175,9 +175,8 @@ def evaluate(data_source):
         data, targets = get_batch(data_source, i, evaluation=True)
         #output, hidden = model(data, hidden)
         #output, hidden, cell_state = model(data, hidden, cell_state)
-        _, hidden, cell_state, tild_cell_state= model(data, hidden, cell_state, tild_cell_state)
-        
         output, hidden, cell_state, tild_cell_state= model(data, hidden, cell_state, tild_cell_state)
+        
         output_flat = output.view(-1, ntokens)
         total_loss += len(data) * criterion(output_flat, targets).data
         hidden = repackage_hidden(hidden)
@@ -212,10 +211,10 @@ def train():
         #output, hidden = model(data, hidden)
         # output, hidden  , cell_state = model(data, hidden, cell_state)
         #output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state)
-        _, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state)
+        output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state)
         
         # 2 layer NestedLSTM
-        output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state) # data to output 
+        #output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state) # data to output 
       
         loss = criterion(output.view(-1, ntokens), targets)
         loss.backward()

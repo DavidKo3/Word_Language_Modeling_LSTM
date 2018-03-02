@@ -132,8 +132,8 @@ if args.cuda:
 lr = args.lr
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(model.parameters(), lr =lr, momentum=0.9, nesterov=True)
-#optimizer = torch.optim.Adam(model.parameters(), args.lr)
+#optimizer = optim.SGD(model.parameters(), lr =lr, momentum=0.9, nesterov=False)
+optimizer = torch.optim.Adam(model.parameters(), lr)
 ###############################################################################
 # Training code
 ###############################################################################

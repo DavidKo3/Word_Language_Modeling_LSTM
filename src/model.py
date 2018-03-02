@@ -3,7 +3,6 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-
 class NestedLSTM(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
     def __init__(self, ntoken, ninp, nhid, dropout, nlayers):

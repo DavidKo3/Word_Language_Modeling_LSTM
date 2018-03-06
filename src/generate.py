@@ -59,8 +59,8 @@ else:
 corpus = data.Corpus(args.data)
 ntokens = len(corpus.dictionary) # 33278
 #hidden = model.init_hidden(1)
-#hidden, cell_state = model.init_hidden(1)
-hidden, cell_state ,tild_cell_state = model.init_hidden(1)
+hidden, cell_state = model.init_hidden(1)
+#hidden, cell_state ,tild_cell_state = model.init_hidden(1)
 input = Variable(torch.rand(1, 1).mul(ntokens).long(), volatile=True) # [1 , 1]
 if args.cuda:
     input.data = input.data.cuda()
@@ -68,8 +68,8 @@ if args.cuda:
 with open(args.outf, 'w') as outf:
     for i in range(args.words):
         #output, hidden = model(input, hidden)
-        #output, hidden , cell_state= model(input, hidden, cell_state)
-        output, hidden , cell_state ,tild_cell_state = model(input, hidden, cell_state, tild_cell_state)
+        output, hidden , cell_state= model(input, hidden, cell_state)
+        #output, hidden , cell_state ,tild_cell_state = model(input, hidden, cell_state, tild_cell_state)
         word_weights = output.squeeze().data.div(args.temperature).exp().cpu() # [33278]
         """
         word_weights of size 33278

@@ -54,6 +54,10 @@ parser.add_argument('--log-interval', type=int, default=200, metavar='N',
 #                    help='report interval')
 parser.add_argument('--save', type=str,  default='model.pt',
                     help='path to save the final model')
+#parser.add_argument('--save_1', type=str,  default='model_1.pt',
+#                    help='path to save the final model')
+#parser.add_argument('--save_2', type=str,  default='model_2.pt',
+#                    help='path to save the final model')
 args = parser.parse_args()
 
 # Set the random seed manually for reproducibility.
@@ -120,20 +124,25 @@ test_data = batchify(corpus.test, eval_batch_size)
 ntokens = len(corpus.dictionary) # 33278
 
 #model = model.NestedLSTM(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied)
-model = model.NestedLSTM(ntokens, args.emsize, args.nhid, args.dropout, nlayers=1)
-
+#model = model.NestedLSTM(ntokens, args.emsize, args.nhid, args.dropout, nlayers=1 , args.batch_size)
+model = model.NestedLSTM(ntokens, args.emsize, args.nhid, args.dropout, args.batch_size , nlayers=1 )
+#model_cell = model.NestedLSTMCell(args.emsize, args.nhid)
 #model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied)
 # args.model  : type of recurrent net (RNN_TANH, RNN_RELU, LSTM, GRU) ('LSTM')
 # args.emsize : size of word embeddings(200), args.nhid : number of hidden units per layer (200), args.nlayers : number of layers (2) 
 # args.tied   : tie the word embedding and softmax weights
 if args.cuda:
     model.cuda()
+    #model_1.cuda()
+    #model_2.cuda()
 
 lr = args.lr
 
 criterion = nn.CrossEntropyLoss()
-#optimizer = optim.SGD(model.parameters(), lr =lr, momentum=0.9, nesterov=False)
-optimizer = torch.optim.Adam(model.parameters(), lr)
+optimizer = optim.SGD(model.parameters(), lr =lr, momentum=0.9, nesterov=True)
+#optimizer = torch.optim.Adam(model.parameters(), lr)
+#optimizer = optim.Adam(model.parameters(), lr)
+#optimizer_2 = optim.SGD(model_2.parameters(), lr =lr, momentum=0.9, nesterov=False)
 ###############################################################################
 # Training code
 ###############################################################################
@@ -166,68 +175,97 @@ def get_batch(source, i, evaluation=False):
 def evaluate(data_source):
     # Turn on evaluation mode which disables dropout.
     model.eval()
+    #model_1.eval()
+    #model_2.eval()
     total_loss = 0
     ntokens = len(corpus.dictionary)
     #hidden = model.init_hidden(eval_batch_size)
-    #hidden ,cell_state = model.init_hidden(eval_batch_size)
-    hidden ,cell_state,tild_cell_state = model.init_hidden(eval_batch_size)
+    hidden , inner_cell_state = model.init_hidden(eval_batch_size)
+    #hidden_1 , inner_cell_state_1 = model_1.init_hidden(eval_batch_size)
+    #hidden_2 , inner_cell_state_2 = model_2.init_hidden(eval_batch_size)
+    #hidden ,cell_state,tild_cell_state = model.init_hidden(eval_batch_size)
     for i in range(0, data_source.size(0) - 1, args.bptt):
         data, targets = get_batch(data_source, i, evaluation=True)
         #output, hidden = model(data, hidden)
-        #output, hidden, cell_state = model(data, hidden, cell_state)
-        output, hidden, cell_state, tild_cell_state= model(data, hidden, cell_state, tild_cell_state)
+        _, hidden, inner_cell_state = model(data, hidden, inner_cell_state)
+        
+        output, hidden, inner_cell_state = model(data, hidden, inner_cell_state)
+        #_, hidden_1, inner_cell_state_1 = model(data, hidden_1, inner_cell_state_1)
+        #output, hidden_2, inner_cell_state_2 = model(data, hidden_1, inner_cell_state_1)
+        #output, hidden, cell_state, tild_cell_state= model(data, hidden, cell_state, tild_cell_state)
         
         output_flat = output.view(-1, ntokens)
         total_loss += len(data) * criterion(output_flat, targets).data
         hidden = repackage_hidden(hidden)
-        
-        cell_state = repackage_hidden(cell_state)
-        tild_cell_state = repackage_hidden(tild_cell_state)
+        inner_cell_state = repackage_hidden(inner_cell_state)
+ 
+        #tild_cell_state = repackage_hidden(tild_cell_state)
     return total_loss[0] / len(data_source)
 
 
 def train():
     # Turn on training mode which enables dropout.
     model.train()
-   
+
+    
     total_loss = 0
     start_time = time.time()
     ntokens = len(corpus.dictionary)
     #hidden, cell_state = model.init_hidden(args.batch_size) # [35, 200]
-    hidden , cell_state, tild_cell_state = model.init_hidden(args.batch_size)
+    #hidden_cell, cell_state_cell = model_cell.init_hidden(args.batch_size) # [35, 200]
+    hidden ,  inner_cell_state = model.init_hidden(args.batch_size)
+    #hidden_1 ,  inner_cell_state_1 = model_1.init_hidden(args.batch_size)
+    #hidden_2 ,  inner_cell_state_2 = model_2.init_hidden(args.batch_size)
     prev_velocity ={}
-   
+    #prev_velocity_1 ={}
+    #prev_velocity_2 ={}
     for batch, i in enumerate(range(0, train_data.size(0) - 1, args.bptt)):
         data, targets = get_batch(train_data, i)
         
         # Starting each batch, we detach the hidden state from how it was previously produced.
         # If we didn't, the model would try backpropagating all the way to start of the dataset.
         hidden = repackage_hidden(hidden)
-        cell_state = repackage_hidden(cell_state)
-        tild_cell_state = repackage_hidden(tild_cell_state)
+        inner_cell_state = repackage_hidden(inner_cell_state)
+        #hidden_1 = repackage_hidden(hidden_1)
+        #inner_cell_state_1 = repackage_hidden(inner_cell_state_1)
+        #hidden_2 = repackage_hidden(hidden_2)
+        #inner_cell_state_2 = repackage_hidden(inner_cell_state_2)
         
         model.zero_grad()
-
+        #model_1.zero_grad()
+        #model_2.zero_grad()
         #output, hidden = model(data, hidden)
-        # output, hidden  , cell_state = model(data, hidden, cell_state)
+        #output, hidden  , cell_state = model(data, hidden, cell_state)
+        
+        _, hidden  , inner_cell_state = model(data, hidden, inner_cell_state)
+        #_, hidden_1  , inner_cell_state_1 = model_1(data, hidden_1, inner_cell_state_1)
+        #output, hidden_2  , inner_cell_state_2 = model_2(data, hidden_1, inner_cell_state_1)
         #output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state)
-        output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state)
         
         # 2 layer NestedLSTM
-        #output, hidden  , cell_state, tild_cell_state = model(data, hidden, cell_state, tild_cell_state) # data to output 
+        output, hidden  ,inner_cell_state = model(data, hidden, inner_cell_state) # data to output 
       
         loss = criterion(output.view(-1, ntokens), targets)
         loss.backward()
         
         torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
-        #optimizer.step()
-        
+
+        optimizer.step()
+        #optimizer_1.step()
+        #optimizer_2.step()
+        """
         init_prev_velocity={}
+   
         if i==0:
-            init_prev_velocity = {k : p.data.new(p.grad.data.size()).zero_() for k , p in enumerate(model.parameters())}
-        k=0
+            init_prev_velocity= {k : p.data.new(p.grad.data.size()).zero_() for k , p in enumerate(model.parameters())}
+        k= 0
         velocity = {}
-      
+
+        
+        
+        
+        #print("model statedict ", model.state_dict())
+        
         for p in model.parameters(): 
             
             gamma = .9
@@ -237,10 +275,10 @@ def train():
                 velocity[k] = gamma*prev_velocity[k] - lr * p.grad.data 
             p.data.add_(velocity[k])
             prev_velocity[k]= velocity[k]
-            k+=1
-            
+            k+=1    
             p.data.add_(-lr, p.grad.data)
         
+        """      
         total_loss += loss.data
 
         if batch % args.log_interval == 0 and batch > 0:
@@ -272,12 +310,14 @@ try:
         if not best_val_loss or val_loss < best_val_loss:
             with open(args.save, 'wb') as f:
                 torch.save(model, f)
+
             best_val_loss = val_loss
         else:
             # Anneal the learning rate if no improvement has been seen in the validation dataset.
             lr /= 2.0
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
+            
 except KeyboardInterrupt:
     print('-' * 89)
     print('Exiting from training early')

@@ -134,6 +134,7 @@ class NestedLSTM(nn.Module):
         print("bsz", bsz)
         lstmcell = NestedLSTMCell(ninp , nhid, bsz)
         self.lstmcell = lstmcell
+        _, self.inner_c_0 = self.lstmcell.init_hidden(bsz)
     def init_weights(self):
         initrange = 0.1
         self.encoder.weight.data.uniform_(-initrange, initrange)
@@ -158,7 +159,7 @@ class NestedLSTM(nn.Module):
         tild_h_x = f_g*inner_c_x 
         tild_x = i_g*c_int
  
-        h_x, inner_c_x = self.lstmcell(tild_x, tild_h_x, self.bsz)
+        h_x, inner_c_x = self.lstmcell(tild_x, tild_h_x, self.innner_c_0)
         h_x = o_g*(F.tanh(h_x)) # [35, 20, 200]
         
         
@@ -173,10 +174,11 @@ class NestedLSTM(nn.Module):
     
         h_0 = Variable(weight.new(1, bsz, self.nhid).zero_())
         #c_0 = Variable(weight.new(self.nlayers, bsz, self.nhid).zero_())
-        inner_c_x = Variable(weight.new(1, bsz, self.nhid).zero_())
+        #inner_c_x = Variable(weight.new(1, bsz, self.nhid).zero_())
+        self.innner_c_0 = Variable(weight.new(1, bsz, self.nhid).zero_())
         #h_0 = Variable(weight.new(self.nlayers, bsz, self.nhid).zero_())
         #c_0 = Variable(weight.new(self.nlayers, bsz, self.nhid).zero_())
-        return (h_0, inner_c_x)
+        return (h_0, self.innner_c_0)
      
 
 
